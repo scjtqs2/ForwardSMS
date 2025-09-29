@@ -17,6 +17,7 @@ var (
 	viperconfig *viper.Viper
 	config      = map[string]interface{}{}
 	router      *gin.Engine
+	lastSMSID   int
 )
 
 // SMSRequest 接收来自 gammu-smsd 的请求结构
@@ -26,6 +27,8 @@ type SMSRequest struct {
 	Time      string `json:"time"`
 	Text      string `json:"text"`
 	Source    string `json:"source"`
+	PhoneID   string `json:"phone_id"`
+	SMSID     int    `json:"sms_id"`
 	Timestamp string `json:"timestamp"`
 }
 
@@ -111,7 +114,7 @@ func setupRoutes() {
 
 		// 管理端点
 		v1.GET("/health", healthHandler)
-		// v1.GET("/status", statusHandler)
+		v1.GET("/status", statusHandler)
 		v1.POST("/test", testHandler)
 	}
 
@@ -161,18 +164,17 @@ func healthHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// // statusHandler 服务状态端点
-// func statusHandler(c *gin.Context) {
-// 	lastID := viperStatus.Get("id")
-// 	configCount := len(config)
-//
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"status":            "running",
-// 		"last_processed_id": lastID,
-// 		"rule_count":        configCount,
-// 		"timestamp":         time.Now().Format(time.RFC3339),
-// 	})
-// }
+// statusHandler 服务状态端点
+func statusHandler(c *gin.Context) {
+	configCount := len(config)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":            "running",
+		"last_processed_id": lastSMSID,
+		"rule_count":        configCount,
+		"timestamp":         time.Now().Format(time.RFC3339),
+	})
+}
 
 // testHandler 测试端点
 func testHandler(c *gin.Context) {
@@ -223,11 +225,13 @@ func smsHandler(c *gin.Context) {
 		})
 		return
 	}
-
+	lastSMSID = smsReq.SMSID
 	log.WithFields(log.Fields{
-		"number": smsReq.Number,
-		"time":   smsReq.Time,
-		"source": smsReq.Source,
+		"number":   smsReq.Number,
+		"time":     smsReq.Time,
+		"source":   smsReq.Source,
+		"sms_id":   smsReq.SMSID,
+		"phone_id": smsReq.PhoneID,
 	}).Info("收到短信推送")
 
 	// 处理短信转发

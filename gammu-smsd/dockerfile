@@ -41,6 +41,7 @@ ENV USB_PORT="/dev/ttyUSB3"
 ENV FORWARD_URL="http://forwardsms:8080/api/v1/sms/receive"
 ENV FORWARD_SECRET=""
 ENV FORWARD_TIMEOUT="30"
+ENV PHONE_ID="SMS1_1234567890"
 
 
 # 设置入口点

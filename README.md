@@ -41,7 +41,7 @@
 2. 插入电脑usb口
 3. 如果指示灯蓝绿交替常亮，代表识别卡信号成功，如果交替闪烁，代表没信号，请安装天线后尝试
 4. 使用`lsusb`命令查看是否识别成功
-5. 克隆项目到本地 `git clone https://github.com/SecurityPaper/ForwardSMS.git && cd ForwardSMS`
+5. 克隆项目到本地 `git clone https://github.com/scjtqs2/ForwardSMS.git && cd ForwardSMS`
 6. 注意，当前目录必须为项目内目录，然后使用命令 `docker run --privileged -v /dev/ttyUSB3:/dev/ttyUSB3 -v ./data:/data securitypaperorg/gammu-smsd:latest echo "a test sms from ec20" | /usr/bin/gammu -c /data/config/gammu-smsd.conf sendsms TEXT 133xxxxxxx`
 7. 133xxxxxxx请替换为自己手机号
 8. 如果成功发送短信，代表卡识别正确，如果返回`350`代表卡并未搜到信号。如果长时间没反应，请尝试另外几个`/dev/ttyUSBx`,直到发送短信成功。
@@ -102,13 +102,6 @@ debuglevel = 0
 ```
 ---
 
-`data/config/status.yaml`
-
-```yaml
-# 代表当前发送到第多少条短信，建议不要删除，否则会从数据库里第一条一直发到最后一条，文件会根据发送自动更新。
-id: 0
-
-```
 ---
 `data/db/sms.db`
 > 文件为sqlite3数据库，用来存储短信接收，如果有需要请定期备份，或者可以下载后查看。
