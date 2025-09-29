@@ -26,7 +26,7 @@ chown -R gammu:gammu /data/log /data/db /var/log/gammu 2>/dev/null || true
 # 如果数据库文件不存在，初始化数据库
 if [ ! -f "/data/db/sms.db" ]; then
     echo "初始化 Gammu 数据库..."
-    gammu-smsd -c /etc/gammu-smsdrc -s
+    gammu-smsd -c /etc/gammu-smsd/gammu-smsdrc -s
     # 设置数据库文件权限
     chown gammu:gammu /data/db/sms.db 2>/dev/null || true
 fi
@@ -48,8 +48,8 @@ else
 fi
 
 # 检查配置文件是否存在
-if [ ! -f "/etc/gammu-smsdrc" ]; then
-    echo "错误: /etc/gammu-smsdrc 配置文件不存在"
+if [ ! -f "/etc/gammu-smsd/gammu-smsdrc" ]; then
+    echo "错误: /etc/gammu-smsd/gammu-smsdrc 配置文件不存在"
     exit 1
 fi
 
