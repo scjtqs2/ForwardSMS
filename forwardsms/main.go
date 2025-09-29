@@ -2,39 +2,78 @@ package main
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
-
+	log "github.com/sirupsen/logrus"
+	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"regexp"
+	"strings"
+)
+
+var (
+	viperStatus *viper.Viper
+	viperconfig *viper.Viper
+	config      = map[string]interface{}{}
+	status      = map[string]interface{}{}
+	localCron   *cron.Cron
 )
 
 func main() {
 	// 读取发送配置文件
-	config := map[string]interface{}{}
-	viperconfig := viper.New()
+	viperconfig = viper.New()
 	viperconfig.SetConfigName("forward")
 	viperconfig.SetConfigType("yaml")
 	viperconfig.AddConfigPath("/data/config")
-	viperconfig.ReadInConfig()
-	viperconfig.Unmarshal(&config)
-
+	err := viperconfig.ReadInConfig()
+	if err != nil {
+		log.Fatalf("read config failed: %v", err)
+		return
+	}
+	err = viperconfig.Unmarshal(&config)
+	if err != nil {
+		log.Fatalf("read config failed: %v", err)
+		return
+	}
+	log.Info("读取推送配置完成")
 	// 读取当前发送规则配置文件
-	status := map[string]interface{}{}
-	viperStatus := viper.New()
+	viperStatus = viper.New()
 	viperStatus.SetConfigName("status")
 	viperStatus.SetConfigType("yaml")
 	viperStatus.AddConfigPath("/data/config")
-	viperStatus.ReadInConfig()
-	viperStatus.Unmarshal(&status)
-
+	err = viperStatus.ReadInConfig()
+	if err != nil {
+		log.Fatalf("Fatal error config file: %s \n", err)
+		return
+	}
+	err = viperStatus.Unmarshal(&status)
+	if err != nil {
+		log.Fatalf("Fatal error config file: %s \n", err)
+		return
+	}
+	log.Info("读取status配置完成")
 	// 写入测试
 	// fmt.Println(viperStatus.Get("id"))
 	// viperStatus.Set("id", 2)
 	// if err := viperStatus.WriteConfig(); err != nil {
 	// 	fmt.Println(err)
 	// }
+	// 定时任务开启
+	localCron = cron.New(cron.WithParser(cron.NewParser(
+		cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
+	)))
+	_, err = localCron.AddFunc("*/5 * * * * *", readSms)
+	if err != nil {
+		log.Fatalf("Fatal error add corn: %s \n", err)
+		return
+	}
+	log.Info("定时任务开启完成，每5秒查询一次")
+	localCron.Run()
+}
+
+func readSms() {
+	log.Info("readSms start")
+	defer log.Info("readSms end")
 
 	// 数据库查询
 	db, err := gorm.Open(sqlite.Open("/data/db/sms.db"), &gorm.Config{})

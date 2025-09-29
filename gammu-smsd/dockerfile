@@ -1,4 +1,4 @@
-FROM alpine
+FROM alpine:3.19
 ENV TZ Asia/Shanghai
 RUN apk add gammu-smsd libdbi-drivers gammu tzdata && cp /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo ${TZ} > /etc/timezone \

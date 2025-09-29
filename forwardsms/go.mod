@@ -3,6 +3,8 @@ module forwardsms
 go 1.24.0
 
 require (
+	github.com/robfig/cron/v3 v3.0.1
+	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.21.0
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.0
