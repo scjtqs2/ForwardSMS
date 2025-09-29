@@ -8,7 +8,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  
+
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -37,33 +37,48 @@ jobs:
 #          username: ${{ secrets.DOCKERHUB_USERNAME }}
 #          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
+      # forwardsms metadata
+      - name: Extract metadata for forwardsms
+        id: meta_forwardsms
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/forwardsms
           tags: |
-            type=latest
+            type=edge
+            {{ if eq github.ref "refs/heads/master" }}type=raw,value=latest{{ end }}
             type=ref,event=branch
-            type=sha,event=branch
+            type=sha
             type=ref,event=tag
 
-      - name: 编译forwardsms镜像
+      - name: 编译 forwardsms 镜像
         uses: docker/build-push-action@v5
         with:
           context: .
           file: forwardsms/dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64, linux/arm64
+          tags: ${{ steps.meta_forwardsms.outputs.tags }}
+          labels: ${{ steps.meta_forwardsms.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
 
-      - name: 编译gammu-smsd镜像
+      # gammu-smsd metadata
+      - name: Extract metadata for gammu-smsd
+        id: meta_gammu
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gammu-smsd
+          tags: |
+            type=edge
+            {{ if eq github.ref "refs/heads/master" }}type=raw,value=latest{{ end }}
+            type=ref,event=branch
+            type=sha
+            type=ref,event=tag
+
+      - name: 编译 gammu-smsd 镜像
         uses: docker/build-push-action@v5
         with:
           context: .
           file: gammu-smsd/dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64, linux/arm64
+          tags: ${{ steps.meta_gammu.outputs.tags }}
+          labels: ${{ steps.meta_gammu.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
