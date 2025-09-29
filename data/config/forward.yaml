@@ -7,7 +7,7 @@ all:
 
 # 从上到下依次为 项目名称、规则（使用关键字匹配）、匹配方式（后续可能支持正则）、机器人url
 测试:
-  rule: 测试
+  rule: 测试DDD
   type: keyword
   notify: wechat
   url: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxx

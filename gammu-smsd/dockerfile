@@ -1,7 +1,51 @@
-FROM alpine:3.19
-ENV TZ Asia/Shanghai
-RUN apk add gammu-smsd libdbi-drivers gammu tzdata && cp /usr/share/zoneinfo/${TZ} /etc/localtime \
-    && echo ${TZ} > /etc/timezone \
-    && apk del tzdata
+# 使用 Alpine Linux 作为基础镜像
+FROM alpine:latest
 
-CMD [ "/usr/bin/gammu-smsd","-c" ,"/data/config/gammu-smsd.conf"]
+# 安装必要的软件包
+RUN apk add --no-cache \
+    gammu-smsd \
+    sqlite \
+    curl \
+    ca-certificates \
+    bash \
+    jq \
+    msmtp \
+    msmtp-mta \
+    tzdata
+
+# 创建必要的目录和用户
+RUN adduser -D -s /bin/bash gammu && \
+    mkdir -p /var/lib/gammu /var/log/gammu /etc/gammu-smsd && \
+    chown gammu:gammu /var/lib/gammu /var/log/gammu /etc/gammu-smsd
+
+# 复制配置文件和脚本
+COPY gammu-smsd/gammu-smsdrc /etc/gammu-smsd/gammu-smsdrc
+COPY gammu-smsd/forward-sms.sh /usr/local/bin/forward-sms.sh
+COPY gammu-smsd/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+# 设置权限
+RUN chmod +x /usr/local/bin/forward-sms.sh /usr/local/bin/docker-entrypoint.sh && \
+    chown gammu:gammu /usr/local/bin/forward-sms.sh
+
+# 设置工作目录
+WORKDIR /var/lib/gammu
+
+# 切换到 gammu 用户
+USER gammu
+
+# 暴露必要的卷
+VOLUME ["/var/lib/gammu", "/etc/gammu-smsd"]
+
+#默认环境变量
+ENV USB_PORT="/dev/ttyUSB3"
+ENV FORWARD_URL="http://forwardsms:8080/api/v1/sms/receive"
+ENV FORWARD_SECRET=""
+ENV FORWARD_TIMEOUT="30"
+
+
+# 设置入口点
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+# 默认命令
+# CMD ["gammu-smsd", "-c", "/etc/gammu-smsdrc", "-d"]
+CMD ["gammu-smsd", "-c", "/etc/gammu-smsdrc"]

@@ -3,12 +3,23 @@ version: "3"
 services:
   forwardsms:
     image:  ghcr.io/scjtqs2/forwardsms:latest
+    environment:
+      - FORWARD_SECRET=your_shared_secret_here
+      - TZ=Asia/Shanghai
+      - HTTP_PORT="8080"
     volumes:
       - ./data:/data
     restart: always
+    expose:
+      - 8080
+
 
   gammu-smsd:
     image: ghcr.io/scjtqs2/gammu-smsd:latest
+    environment:
+      - FORWARD_URL=http://forwardsms:8080/api/v1/sms/receive
+      - FORWARD_SECRET=your_shared_secret_here
+      - TZ=Asia/Shanghai
     volumes:
       - ./data:/data
       - /dev/ttyUSB3:/dev/ttyUSB3
