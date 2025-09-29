@@ -37,12 +37,12 @@ if [ -f "/usr/local/bin/forward-sms.sh" ]; then
     echo "短信转发脚本已就绪"
 
     # 设置转发脚本中的环境变量
-    if [ -n "$FORWARD_URL" ]; then
-        sed -i "s|http://forwardsms:8080|$FORWARD_URL|g" /usr/local/bin/forward-sms.sh
-    fi
-    if [ -n "$FORWARD_SECRET" ]; then
-        sed -i "s|your_shared_secret_here|$FORWARD_SECRET|g" /usr/local/bin/forward-sms.sh
-    fi
+    #if [ -n "$FORWARD_URL" ]; then
+    #    sed -i "s|http://forwardsms:8080|$FORWARD_URL|g" /usr/local/bin/forward-sms.sh
+    #fi
+    #if [ -n "$FORWARD_SECRET" ]; then
+    #    sed -i "s|your_shared_secret_here|$FORWARD_SECRET|g" /usr/local/bin/forward-sms.sh
+    #fi
 else
     echo "警告：未找到转发脚本 /usr/local/bin/forward-sms.sh"
 fi
