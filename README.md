@@ -1,5 +1,8 @@
 # 项目介绍
 
+修改自[ForwardSMS](https://github.com/SecurityPaper/ForwardSMS)
+
+
 4G模块，sim卡短信转发到企业微信软硬一体解决方案
 
 企业过难免遇到注册外部账号情况，如果使用个人手机号很容易离职时候导致账号难以管理。

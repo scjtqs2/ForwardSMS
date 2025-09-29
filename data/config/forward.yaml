@@ -2,10 +2,40 @@
 all:
   rule: all
   type: all
+  notify: wechat
   url: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxx
 
 # 从上到下依次为 项目名称、规则（使用关键字匹配）、匹配方式（后续可能支持正则）、机器人url
 测试:
   rule: 测试
   type: keyword
+  notify: wechat
   url: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxx
+
+工单号:
+  rule: "\\d{8}"   # 匹配8位数字
+  type: regex
+  notify: gotify
+  url: https://gotify.example.com
+  token: your_app_token
+
+bark:
+    notify: bark
+    type: all
+    url: "https://api.day.app/xxxx"
+
+gtify:
+    notify: gotify
+    type: all
+    url: "https://gotify.example.com"
+    token: "your_app_token"
+
+email:
+    notify: email
+    type: all
+    smtp_host: "smtp.qq.com"
+    smtp_port: "587"
+    username: "xxx@qq.com"
+    password: "授权码"
+    from: "xxx@qq.com"
+    to: "yyy@qq.com"

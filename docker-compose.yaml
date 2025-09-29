@@ -2,13 +2,13 @@ version: "3"
 
 services:
   forwardsms:
-    image:  securitypaperorg/forwardsms:latest
+    image:  ghcr.io/scjtqs2/forwardsms:latest
     volumes:
       - ./data:/data
     restart: always
 
   gammu-smsd:
-    image: securitypaperorg/gammu-smsd:latest
+    image: ghcr.io/scjtqs2/gammu-smsd:latest
     volumes:
       - ./data:/data
       - /dev/ttyUSB3:/dev/ttyUSB3

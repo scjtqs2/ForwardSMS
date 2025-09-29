@@ -25,12 +25,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - 
-        name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+#      -
+#        name: Login to DockerHub
+#        uses: docker/login-action@v1
+#        with:
+#          username: ${{ secrets.DOCKERHUB_USERNAME }}
+#          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       -
         name: 编译forwardsms镜像
@@ -41,8 +41,7 @@ jobs:
           push: true
           file: forwardsms/dockerfile
           tags: |
-            ghcr.io/securitypaper/forwardsms:latest
-            securitypaperorg/forwardsms:latest
+            ghcr.io/scjtqs2/forwardsms:latest
 
       -
         name: 编译gammu-smsd镜像
@@ -53,5 +52,4 @@ jobs:
           push: true
           file: gammu-smsd/dockerfile
           tags: |
-            ghcr.io/securitypaper/gammu-smsd:latest
-            securitypaperorg/gammu-smsd:latest
+            ghcr.io/scjtqs2/gammu-smsd:latest

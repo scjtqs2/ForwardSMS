@@ -1,9 +1,11 @@
-FROM alpine AS build-env
+FROM golang:1.25-alpine AS build-env
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
+RUN go env -w GOPROXY="http://goproxy.cn,direct"
 
 WORKDIR /go
 COPY ./forwardsms/ /go/
-RUN apk add go build-base
+RUN apk add build-base
 RUN CGO_ENABLED=1 go build -a -tags netgo -ldflags "-s -w"
 
 FROM alpine
