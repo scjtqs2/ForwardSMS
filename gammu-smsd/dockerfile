@@ -9,8 +9,6 @@ RUN apk add --no-cache \
     ca-certificates \
     bash \
     jq \
-    msmtp \
-    msmtp-mta \
     tzdata
 
 # 创建必要的目录和用户
