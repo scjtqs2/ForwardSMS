@@ -1,7 +1,7 @@
 FROM golang:1.25-alpine AS build-env
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
-RUN go env -w GOPROXY="http://goproxy.cn,direct"
+# RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+#
+# RUN go env -w GOPROXY="http://goproxy.cn,direct"
 
 WORKDIR /go
 COPY ./forwardsms/ /go/
