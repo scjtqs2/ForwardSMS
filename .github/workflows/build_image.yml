@@ -45,10 +45,10 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/forwardsms
           tags: |
             type=edge
-            {{ if eq github.ref "refs/heads/master" }}type=raw,value=latest{{ end }}
             type=ref,event=branch
             type=sha
             type=ref,event=tag
+            type=raw,value=latest,enable={{ eq github.ref "refs/heads/master" }}
 
       - name: 编译 forwardsms 镜像
         uses: docker/build-push-action@v5
@@ -68,10 +68,10 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gammu-smsd
           tags: |
             type=edge
-            {{ if eq github.ref "refs/heads/master" }}type=raw,value=latest{{ end }}
             type=ref,event=branch
             type=sha
             type=ref,event=tag
+            type=raw,value=latest,enable={{ eq github.ref "refs/heads/master" }}
 
       - name: 编译 gammu-smsd 镜像
         uses: docker/build-push-action@v5
