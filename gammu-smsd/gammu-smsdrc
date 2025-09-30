@@ -3,7 +3,7 @@
 port = %USB_PORT%
 
 #连接方式和速率，保持默认即可
-connection = at115200
+connection = %ATCONNECTION%
 
 # 配置smsd守护进程的配置
 [smsd]
@@ -29,3 +29,18 @@ debuglevel = 0
 PhoneID = %PHONE_ID%
 
 RunOnReceive = /usr/local/bin/forward-sms.sh
+
+# 短信存储设置
+commtimeout = 30
+sendtimeout = 30
+resetinterval = never
+checksecurity = 0
+InboxPath = /data/sms/inbox/
+OutboxPath = /data/sms/outbox/
+SentSMSPath = /data/sms/sent/
+ErrorSMSPath = /data/sms/error/
+
+# 内存管理
+memorysending = 1
+maxfailures = 3
+restartdelay = 10

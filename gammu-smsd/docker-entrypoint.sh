@@ -17,6 +17,13 @@ else
   echo "警告: PHONE_ID 环境变量未设置，使用默认配置"
 fi
 
+if [ -n "$ATCONNECTION" ]; then
+   echo "配置 AT 连接: $ATCONNECTION"
+   sed -i "s|%ATCONNECTION%|$ATCONNECTION|g" /etc/gammu-smsd/gammu-smsdrc
+else
+    echo "警告: ATCONNECTION 环境变量未设置，使用默认配置"
+fi
+
 # 创建必要的目录
 mkdir -p /data/log /data/db /var/log/gammu
 
@@ -57,6 +64,7 @@ fi
 echo "=== Gammu SMSD 配置信息 ==="
 echo "USB 端口: ${USB_PORT:-未设置}"
 echo "转发 URL: ${FORWARD_URL:-未设置}"
+echo "AT 连接: ${ATCONNECTION:-未设置}"
 echo "数据库路径: /data/db/sms.db"
 echo "日志路径: /data/log/"
 echo "=========================="

@@ -21,6 +21,7 @@ services:
       - FORWARD_SECRET=your_shared_secret_here
       - TZ=Asia/Shanghai
       - PHONE_ID=SMS1_1234567890
+      - ATCONNECTION=at115200
     volumes:
       - ./data:/data
       - /dev/ttyUSB3:/dev/ttyUSB3
