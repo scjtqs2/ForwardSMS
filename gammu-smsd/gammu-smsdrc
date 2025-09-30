@@ -45,3 +45,9 @@ checksecurity = 0
 memorysending = 1
 maxfailures = 3
 restartdelay = 10
+
+# 可选：自动清理旧短信
+#ArchiveDir = /data/db/archive
+#ArchiveTable = inbox_archive
+# 保留最近30天的短信
+#CleanInterval = 30
