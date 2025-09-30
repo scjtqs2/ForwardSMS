@@ -35,6 +35,42 @@
 
 使用移远EC20解决方案，[购买链接](https://detail.tmall.com/item.htm?spm=a1z10.5-b-s.w4011-23773508522.66.cd38a48eir4WR3&id=595437612613&skuId=4304510502236)
 
+## EC 模块初始化和配置
+将含有模块的转接板插到 USB 口之后使用命令 `ls /dev/ttyUSB*` 查看当前系统中的 tty 模拟 usb 的设备，如果当前机器只有 ec20 模块的话大概会看到 `ttyUSB1`/`ttyUSB2`/`ttyUSB3`, 有些还会有 `ttyUSB4` 甚至更高，根据移远文档的说明，通常 `ttyUSB2` 是 `AT` 命令口，这也是本文主要用到的接口.
+
+
+确定转接板链接正常后通过 `apt install minicom` 安装 `minicom` 然后通过命令 `minicom -D /dev/ttyUSB2` 连接到模块执行 `AT` 命令
+输入 `ATI` 按回车可以看到模块返回的模块信息，大概如下
+
+```shell
+Quectel
+EC20F
+Revision: EC20CEFAGR06A10M4G
+```
+
+需要注意的是有些模块可能没有 `ttyUSB2`, 但是有 `ttyUSB3` 和 `ttyUSB4`, 这时可以尝试使用 `ttyUSB3`.
+如果设备插了多个模块和转接板，则后面的数字是顺延排列的，所以其实叫什么名无所谓，可以全都发一下 `AT` 指令试一下.
+
+
+然后输入 `AT+QPRTPARA=3` 重置模块设置，然后输入 `AT+CFUN=1,1` 重启模块，重启时模块会和机器短暂断开连接，如果长时间链接不上可以执行 `ls /dev/ttyUSB*` 看下数字是否发生变化，有时数字会往后顺延，这时需要重新拔插 usb 或者直接连接新的接口.
+
+
+然后输入 `AT+COPS?` 和 `AT+QNWINFO` 查询是否已经注册到运营商网络，大概会返回如下信息
+
+```shell
+AT+COPS?
++COPS: 0,0,"CHN-UNICOM",7
+
+OK
+
+AT+QNWINFO
++QNWINFO: "FDD LTE","46001","LTE BAND 3",1650
+
+OK
+```
+到这里 EC 模块就算是配置好了，如果没有你的 SIM 卡没有注册成功的话，先排除是否是欠费了，没有的话可以尝试开启 VOLTE, 操作方式的话还请 google 搜索.
+
+
 ## 部署方案
 
 1. 插入sim卡

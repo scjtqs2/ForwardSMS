@@ -35,10 +35,11 @@ commtimeout = 30
 sendtimeout = 30
 resetinterval = never
 checksecurity = 0
-InboxPath = /data/sms/inbox/
-OutboxPath = /data/sms/outbox/
-SentSMSPath = /data/sms/sent/
-ErrorSMSPath = /data/sms/error/
+# 用了db存储，就不需要这些配置了
+#InboxPath = /data/sms/inbox/
+#OutboxPath = /data/sms/outbox/
+#SentSMSPath = /data/sms/sent/
+#ErrorSMSPath = /data/sms/error/
 
 # 内存管理
 memorysending = 1
