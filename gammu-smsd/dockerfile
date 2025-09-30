@@ -17,7 +17,7 @@ RUN adduser -D -s /bin/bash gammu && \
     chown gammu:gammu /var/lib/gammu /var/log/gammu /etc/gammu-smsd
 
 # 复制配置文件和脚本
-COPY gammu-smsd/gammu-smsdrc /etc/gammu-smsd/gammu-smsdrc
+COPY gammu-smsd/gammu-smsdrc.conf /etc/gammu-smsd/gammu-smsdrc
 COPY gammu-smsd/forward-sms.sh /usr/local/bin/forward-sms.sh
 COPY gammu-smsd/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
