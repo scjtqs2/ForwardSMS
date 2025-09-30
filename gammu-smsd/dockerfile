@@ -20,6 +20,7 @@ RUN adduser -D -s /bin/bash gammu && \
 COPY gammu-smsd/gammu-smsdrc.conf /etc/gammu-smsd/gammu-smsdrc
 COPY gammu-smsd/forward-sms.sh /usr/local/bin/forward-sms.sh
 COPY gammu-smsd/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY gammu-smsd/sqlite.sql /etc/gammu-smsd/sqlite.sql
 
 # 设置权限
 RUN chmod +x /usr/local/bin/forward-sms.sh /usr/local/bin/docker-entrypoint.sh && \
