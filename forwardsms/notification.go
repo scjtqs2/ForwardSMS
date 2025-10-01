@@ -150,7 +150,6 @@ type GotifyRequest struct {
 }
 
 func sendGotify(url, token, title, message string) {
-	fmt.Println(url, token, title, message)
 	msg := GotifyRequest{
 		Title:    title,
 		Message:  message,
