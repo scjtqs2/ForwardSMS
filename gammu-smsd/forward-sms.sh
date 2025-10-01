@@ -15,9 +15,11 @@ mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p "$PROCESSED_DIR"
 mkdir -p "$INBOX_DIR"
 
-# 记录日志函数
+# 记录日志函数 - 同时输出到文件和控制台
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+    local message="$(date '+%Y-%m-%d %H:%M:%S') - $1"
+    echo "$message" >> "$LOG_FILE"
+    echo "$message"
 }
 
 # 文件锁函数，防止并发执行
@@ -50,7 +52,47 @@ FORWARD_SECRET="${FORWARD_SECRET:-}"
 FORWARD_TIMEOUT="${FORWARD_TIMEOUT:-30}"
 PHONE_ID="${PHONE_ID:-default-phone}"
 
-# 解析短信文件内容 - 修复版本
+# 调试函数：查看文件实际内容
+debug_file_content() {
+    local file="$1"
+    log "🔍 调试文件内容: $file"
+    log "   文件大小: $(wc -c < "$file") 字节"
+    log "   文件行数: $(wc -l < "$file") 行"
+    log "   文件内容（原始）:"
+    local hexdump_output
+    hexdump_output=$(hexdump -C "$file" | head -10)
+    echo "$hexdump_output" | while IFS= read -r line; do
+        echo "   $line" >> "$LOG_FILE"
+        echo "   $line"
+    done
+    log "   文件内容（文本）:"
+    cat "$file" | while IFS= read -r line; do
+        echo "      $line" >> "$LOG_FILE"
+        echo "      $line"
+    done
+}
+
+# 调试函数：显示文件名解析详情
+debug_filename_parse() {
+    local filename="$1"
+    log "🔍 解析文件名: $filename"
+
+    # 显示文件名各部分
+    if [[ "$filename" =~ (IN[0-9]{8}_[0-9]{6}_[0-9]{2}_)([^_]+)(_.+\.txt) ]]; then
+        local prefix="${BASH_REMATCH[1]}"
+        local potential_number="${BASH_REMATCH[2]}"
+        local suffix="${BASH_REMATCH[3]}"
+
+        log "   文件名结构:"
+        log "   前缀: $prefix"
+        log "   可能号码: $potential_number"
+        log "   后缀: $suffix"
+    else
+        log "   ⚠️ 无法解析文件名结构"
+    fi
+}
+
+# 解析短信文件内容
 parse_sms_file() {
     local file="$1"
 
@@ -63,15 +105,17 @@ parse_sms_file() {
     # 从文件名提取信息
     sms_id=$(basename "$file")
 
-    # 从文件名解析时间 (格式: IN20251001_185245_00_+8618628287642_00.txt)
+    # 从文件名解析时间 (格式: IN20251001_185903_00_+8618628287642_00.txt)
     if [[ "$sms_id" =~ IN([0-9]{8})_([0-9]{6}) ]]; then
-        local date_part="${BASH_REMATCH[1]}"  # 20251001
-        local time_part="${BASH_REMATCH[2]}"  # 185245
+        local date_part="${BASH_REMATCH[1]}"
+        local time_part="${BASH_REMATCH[2]}"
         time="${date_part:0:4}-${date_part:4:2}-${date_part:6:2} ${time_part:0:2}:${time_part:2:2}:${time_part:4:2}"
+        log "从文件名解析时间: $time"
+    else
+        log "⚠️ 无法从文件名解析时间"
     fi
 
-    # 从文件名解析号码 (格式: IN20251001_185245_00_+8618628287642_00.txt)
-    # 修复正则表达式：匹配 +8618628287642 这样的完整号码
+    # 从文件名解析号码
     if [[ "$sms_id" =~ _([+0-9]{11,})_ ]]; then
         number="${BASH_REMATCH[1]}"
         log "从文件名解析到号码: $number"
@@ -80,13 +124,19 @@ parse_sms_file() {
         if [[ "$sms_id" =~ _([0-9]{5,})_ ]]; then
             number="${BASH_REMATCH[1]}"
             log "从文件名解析到备用号码: $number"
+        else
+            log "⚠️ 无法从文件名解析号码"
         fi
     fi
 
     # 读取文件内容
     if [ -f "$file" ]; then
+        # 调试：查看文件实际内容（仅在调试模式下）
+        if [ "${DEBUG_SMS:-false}" = "true" ]; then
+            debug_file_content "$file"
+        fi
+
         # 读取整个文件内容作为短信正文
-        # 使用正确的编码处理中文
         text=$(cat "$file" | tr -d '\r')
 
         # 如果从文件名中没解析出正确的号码，尝试其他方法
@@ -99,16 +149,20 @@ parse_sms_file() {
             elif [[ "$sms_id" =~ _([0-9]{11,})_ ]]; then
                 number="${BASH_REMATCH[1]}"
                 log "重新解析到号码: $number"
+            else
+                log "❌ 无法重新解析到有效号码"
             fi
         fi
 
         # 如果没有明确的时间，使用文件修改时间
         if [ -z "$time" ]; then
             time=$(date -r "$file" "+%Y-%m-%d %H:%M:%S")
+            log "使用文件修改时间: $time"
         fi
 
         echo "$sms_id|$number|$text|$time"
     else
+        log "❌ 文件不存在: $file"
         echo ""
     fi
 }
@@ -138,7 +192,11 @@ EOF
 
     log "尝试转发短信: $sms_id 到: $FORWARD_URL"
     log "短信数据 - 发件人: $number, 时间: $time, 内容长度: ${#text} 字符"
-    log "短信内容: $text"
+
+    # 在调试模式下显示短信内容
+    if [ "${DEBUG_SMS:-false}" = "true" ]; then
+        log "短信内容: $text"
+    fi
 
     # 使用 curl 发送 POST 请求
     local response
@@ -176,6 +234,11 @@ EOF
 process_single_sms() {
     local file="$1"
 
+    # 调试文件名解析
+    if [ "${DEBUG_SMS:-false}" = "true" ]; then
+        debug_filename_parse "$(basename "$file")"
+    fi
+
     # 解析短信文件
     local parsed_data
     parsed_data=$(parse_sms_file "$file")
@@ -188,7 +251,7 @@ process_single_sms() {
     # 提取解析的数据
     IFS='|' read -r sms_id number text time <<< "$parsed_data"
 
-    log "处理短信: $sms_id - 发件人: $number, 时间: $time, 内容: $text"
+    log "处理短信: $sms_id - 发件人: $number, 时间: $time"
 
     # 检查号码是否有效（至少11位）
     if [ -z "$number" ] || [ ${#number} -lt 11 ]; then
@@ -217,27 +280,10 @@ get_unprocessed_sms_files() {
     find "$INBOX_DIR" -maxdepth 1 -type f -name "IN*.txt" | sort
 }
 
-# 调试函数：显示文件名解析详情
-debug_filename_parse() {
-    local filename="$1"
-    log "🔍 解析文件名: $filename"
-
-    # 显示文件名各部分
-    if [[ "$filename" =~ (IN[0-9]{8}_[0-9]{6}_[0-9]{2}_)([^_]+)(_.+\.txt) ]]; then
-        local prefix="${BASH_REMATCH[1]}"
-        local potential_number="${BASH_REMATCH[2]}"
-        local suffix="${BASH_REMATCH[3]}"
-
-        log "   文件名结构:"
-        log "   前缀: $prefix"
-        log "   可能号码: $potential_number"
-        log "   后缀: $suffix"
-    fi
-}
-
 # 主函数
 main() {
     log "📱 开始检查未处理短信..."
+    log "环境配置 - FORWARD_URL: $FORWARD_URL, PHONE_ID: $PHONE_ID, DEBUG_SMS: ${DEBUG_SMS:-false}"
 
     # 检查 inbox 目录是否存在
     if [ ! -d "$INBOX_DIR" ]; then
@@ -271,9 +317,6 @@ main() {
     # 处理每一个短信文件
     while IFS= read -r file; do
         if [ -f "$file" ]; then
-            # 调试文件名解析
-            debug_filename_parse "$(basename "$file")"
-
             if process_single_sms "$file"; then
                 processed_count=$((processed_count + 1))
             else
