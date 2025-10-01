@@ -28,7 +28,7 @@ type SMSRequest struct {
 	Text      string `json:"text"`
 	Source    string `json:"source"`
 	PhoneID   string `json:"phone_id"`
-	SMSID     int    `json:"sms_id"`
+	SMSID     string `json:"sms_id"`
 	Timestamp string `json:"timestamp"`
 }
 
