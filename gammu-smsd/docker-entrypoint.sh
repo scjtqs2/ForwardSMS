@@ -25,7 +25,7 @@ else
 fi
 
 # 创建必要的目录
-mkdir -p /data/log /data/db /var/log/gammu
+mkdir -p /data/log /data/db /var/log/gammu /data/sms/inbox /data/sms/outbox /data/sms/sent /data/sms/error
 
 # 设置目录权限
 #chown -R gammu:gammu /data/log /data/db /var/log/gammu 2>/dev/null || true
