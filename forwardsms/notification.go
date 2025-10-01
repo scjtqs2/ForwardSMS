@@ -4,16 +4,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/smtp"
 	"regexp"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
 func sendNotification(config map[string]interface{}, sender, time, text, rule string, smsReq SMSRequest) {
-	message := fmt.Sprintf("触发规则: %s\n发送时间: %s\n发送人: %s\n短信内容: %s", rule, time, sender, text)
+	message := fmt.Sprintf("触发规则: %s\n发送时间: %s\n发送人: %s \nphoneID: %s\n短信内容: %s\nSource: %s", rule, time, sender, smsReq.PhoneID, text, smsReq.Source)
 	messagePhone := fmt.Sprintf("%s\n%s\n%s\n%s", text, smsReq.PhoneID, smsReq.Time, smsReq.Source)
 
 	notifyType, ok := config["notify"].(string)
@@ -49,6 +51,12 @@ func sendNotification(config map[string]interface{}, sender, time, text, rule st
 		to, ok6 := config["to"].(string)
 		if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
 			sendEmail(smtpHost, smtpPort, username, password, from, to, "短信通知", message)
+		}
+	case "qq":
+		qq, ok1 := config["qq"].(string)
+		token, ok2 := config["token"].(string)
+		if ok1 && ok2 {
+			sendQQPush(text, qq, token)
 		}
 	default:
 		log.Warnf("未知的通知类型: %s", notifyType)
@@ -205,4 +213,54 @@ func extractVerificationCode(content string) string {
 	}
 
 	return ""
+}
+
+type PostData map[string]interface{}
+
+func sendQQPush(token, cqq, msg string) {
+	log.Infof("发送QQPush通知: token=%s, cqq=%s, msg=%s", token, cqq, msg)
+
+	posturl := fmt.Sprintf("https://wx.scjtqs.com/qq/push/pushMsg?token=%s", token)
+	header := make(http.Header)
+	// header.Set("Users-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:32.0) Gecko/20100101 Firefox/32.0")
+	header.Set("content-type", "application/json")
+
+	postdata, err := json.Marshal(PostData{
+		"qq": cqq,
+		"content": []PostData{
+			{
+				"msgtype": "text",
+				"text":    msg,
+			},
+		},
+		"token": token,
+	})
+	if err != nil {
+		log.Errorf("序列化QQPush请求数据失败: %v", err)
+		return
+	}
+
+	req, err := http.NewRequest("POST", posturl, bytes.NewBuffer(postdata))
+	if err != nil {
+		log.Errorf("创建QQPush请求失败: %v", err)
+		return
+	}
+	req.Header = header
+
+	client := &http.Client{Timeout: time.Second * 6}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf("发送QQPush通知失败: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// 读取响应内容
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Errorf("读取QQPush响应失败: %v", err)
+		return
+	}
+
+	log.Infof("QQPush通知发送成功, 响应: %s", string(body))
 }
