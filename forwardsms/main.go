@@ -90,7 +90,11 @@ func initConfig() error {
 
 func initGin() {
 	// 设置 Gin 模式
-	gin.SetMode(gin.ReleaseMode)
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "true" {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
 	// 创建路由
 	router = gin.Default()
