@@ -56,7 +56,7 @@ func sendNotification(config map[string]interface{}, sender, time, text, rule st
 		qq, ok1 := config["qq"].(string)
 		token, ok2 := config["token"].(string)
 		if ok1 && ok2 {
-			sendQQPush(fmt.Sprintf("短信通知\n%s", message), qq, token)
+			sendQQPush(token, qq, fmt.Sprintf("短信通知\n%s", message))
 		}
 	default:
 		log.Warnf("未知的通知类型: %s", notifyType)
