@@ -10,8 +10,17 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  docker:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: forwardsms
+            dockerfile: forwardsms/dockerfile
+            image: forwardsms
+          - name: gammu-smsd
+            dockerfile: gammu-smsd/dockerfile
+            image: gammu-smsd
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,59 +33,28 @@ jobs:
 
       - name: Login to Github Registry
         uses: docker/login-action@v3
-        if: github.event_name != 'pull_request'
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          #password: ${{ secrets.GIT_TOKEN }}
-#      -
-#        name: Login to DockerHub
-#        uses: docker/login-action@v1
-#        with:
-#          username: ${{ secrets.DOCKERHUB_USERNAME }}
-#          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # forwardsms metadata
-      - name: Extract metadata for forwardsms
-        id: meta_forwardsms
+      - name: Extract metadata
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/forwardsms
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.image }}
           tags: |
             type=ref,event=branch
             type=sha
             type=ref,event=tag
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
 
-      - name: 编译 forwardsms 镜像
+      - name: 编译 ${{ matrix.name }} 镜像
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: forwardsms/dockerfile
+          file: ${{ matrix.dockerfile }}
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta_forwardsms.outputs.tags }}
-          labels: ${{ steps.meta_forwardsms.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-
-      # gammu-smsd metadata
-      - name: Extract metadata for gammu-smsd
-        id: meta_gammu
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gammu-smsd
-          tags: |
-            type=ref,event=branch
-            type=sha
-            type=ref,event=tag
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
-
-      - name: 编译 gammu-smsd 镜像
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: gammu-smsd/dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta_gammu.outputs.tags }}
-          labels: ${{ steps.meta_gammu.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
