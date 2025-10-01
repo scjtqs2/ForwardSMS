@@ -2,7 +2,7 @@ version: "3"
 
 services:
   forwardsms:
-    image:  ghcr.io/scjtqs2/forwardsms:latest
+    image:  ghcr.io/scjtqs2/forwardsms/forwardsms:latest
     environment:
       - FORWARD_SECRET=your_shared_secret_here
       - TZ=Asia/Shanghai
@@ -15,7 +15,7 @@ services:
 
 
   gammu-smsd:
-    image: ghcr.io/scjtqs2/gammu-smsd:latest
+    image: ghcr.io/scjtqs2/forwardsms/gammu-smsd:latest
     environment:
       - FORWARD_URL=http://forwardsms:8080/api/v1/sms/receive
       - FORWARD_SECRET=your_shared_secret_here
