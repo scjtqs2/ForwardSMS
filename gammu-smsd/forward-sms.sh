@@ -7,12 +7,13 @@
 
 LOG_FILE="/data/log/forward.log"
 INBOX_DIR="/data/sms/inbox"
-PROCESSED_DIR="/var/spool/gammu/processed"
+PROCESSED_DIR="/data/sms/processed"
 LOCK_FILE="/tmp/sms_forward.lock"
 
 # 创建必要的目录
 mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p "$PROCESSED_DIR"
+mkdir -p "$INBOX_DIR"
 
 # 记录日志函数
 log() {
@@ -49,7 +50,19 @@ FORWARD_SECRET="${FORWARD_SECRET:-}"
 FORWARD_TIMEOUT="${FORWARD_TIMEOUT:-30}"
 PHONE_ID="${PHONE_ID:-default-phone}"
 
-# 解析短信文件内容
+# 调试函数：查看文件实际内容
+debug_file_content() {
+    local file="$1"
+    log "🔍 调试文件内容: $file"
+    log "   文件大小: $(wc -c < "$file") 字节"
+    log "   文件行数: $(wc -l < "$file") 行"
+    log "   文件内容（原始）:"
+    hexdump -C "$file" | head -10 >> "$LOG_FILE"
+    log "   文件内容（文本）:"
+    cat "$file" | sed 's/^/      /' >> "$LOG_FILE"
+}
+
+# 解析短信文件内容 - 改进版本
 parse_sms_file() {
     local file="$1"
 
@@ -59,17 +72,42 @@ parse_sms_file() {
     local time=""
     local sms_id=""
 
-    # 从文件名提取信息（Gammu 通常使用时间戳作为文件名）
+    # 从文件名提取信息
     sms_id=$(basename "$file")
-    time=$(echo "$sms_id" | sed 's/^.*_//' | sed 's/\..*$//')  # 从文件名提取时间
+
+    # 从文件名解析时间 (格式: IN20251001_183701_00_+8618628287642_00.txt)
+    if [[ "$sms_id" =~ IN([0-9]{8})_([0-9]{6}) ]]; then
+        local date_part="${BASH_REMATCH[1]}"  # 20251001
+        local time_part="${BASH_REMATCH[2]}"  # 183701
+        time="${date_part:0:4}-${date_part:4:2}-${date_part:6:2} ${time_part:0:2}:${time_part:2:2}:${time_part:4:2}"
+    fi
+
+    # 从文件名解析号码 (格式: IN20251001_183701_00_+8618628287642_00.txt)
+    if [[ "$sms_id" =~ _([+0-9]+)_ ]]; then
+        number="${BASH_REMATCH[1]}"
+    fi
 
     # 读取文件内容
     if [ -f "$file" ]; then
-        # 第一行通常是发件人号码
-        number=$(head -1 "$file" | tr -d '\r\n')
+        # 调试：查看文件实际内容
+        debug_file_content "$file"
 
-        # 其余内容是短信正文
-        text=$(tail -n +2 "$file" | tr -d '\r\n')
+        # 读取整个文件内容作为短信正文
+        text=$(cat "$file" | tr -d '\r' | sed '/^$/d')
+
+        # 如果从文件名中没解析出号码，尝试从文件内容第一行读取
+        if [ -z "$number" ] || [ "$number" == "还差还差哈哈哈" ]; then
+            # 可能是文件格式不同，尝试其他解析方式
+            local first_line=$(head -1 "$file" | tr -d '\r\n')
+            if [[ "$first_line" =~ ^[+0-9]+$ ]]; then
+                number="$first_line"
+                # 如果第一行是号码，那么短信内容从第二行开始
+                text=$(tail -n +2 "$file" | tr -d '\r' | sed '/^$/d')
+            else
+                # 第一行不是号码，整个文件都是内容
+                text="$first_line$(tail -n +2 "$file" | tr -d '\r' | sed '/^$/d')"
+            fi
+        fi
 
         # 如果没有明确的时间，使用文件修改时间
         if [ -z "$time" ]; then
@@ -107,6 +145,7 @@ EOF
 
     log "尝试转发短信: $sms_id 到: $FORWARD_URL"
     log "短信数据 - 发件人: $number, 时间: $time, 内容长度: ${#text} 字符"
+    log "短信内容: $text"
 
     # 使用 curl 发送 POST 请求
     local response
@@ -116,6 +155,7 @@ EOF
         -H "User-Agent: Gammu-SMSD/1.0" \
         -d "$json_data" \
         --connect-timeout 10 \
+        -H "X-Forward-Secret: ${FORWARD_SECRET}" \
         --max-time "$FORWARD_TIMEOUT" \
         "$FORWARD_URL")
 
@@ -155,7 +195,13 @@ process_single_sms() {
     # 提取解析的数据
     IFS='|' read -r sms_id number text time <<< "$parsed_data"
 
-    log "处理短信: $sms_id - 发件人: $number, 时间: $time"
+    log "处理短信: $sms_id - 发件人: $number, 时间: $time, 内容: $text"
+
+    # 检查号码是否有效
+    if [ -z "$number" ] || [[ ! "$number" =~ ^[+0-9] ]]; then
+        log "⚠️ 号码格式无效: '$number'，尝试从内容中提取"
+        # 这里可以添加从内容中提取号码的逻辑
+    fi
 
     # 转义 JSON 特殊字符
     local escaped_text=$(echo "$text" | sed 's/"/\\"/g' | sed 's/\\/\\\\/g')
@@ -175,7 +221,7 @@ process_single_sms() {
 # 获取未处理的短信文件
 get_unprocessed_sms_files() {
     # 查找 inbox 目录下所有文件，按修改时间排序
-    find "$INBOX_DIR" -type f -name "*" | sort
+    find "$INBOX_DIR" -maxdepth 1 -type f -name "*.txt" | sort
 }
 
 # 主函数
@@ -218,8 +264,6 @@ main() {
                 processed_count=$((processed_count + 1))
             else
                 failed_count=$((failed_count + 1))
-                # 如果一条失败，可以选择停止或继续处理
-                # 这里选择继续处理其他文件
                 log "⚠️ 短信文件处理失败: $file，继续处理下一个"
             fi
         fi

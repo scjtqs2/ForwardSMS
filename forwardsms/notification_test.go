@@ -30,7 +30,7 @@ func TestSendNotification(t *testing.T) {
 	msg := SMSRequest{
 		Number:  "18611111111",
 		Time:    "2025-10-01T08:49:44Z",
-		Text:    "你好啊",
+		Text:    "你好啊!!!",
 		Source:  "forward test",
 		PhoneID: "SMS1_123456789",
 	}
