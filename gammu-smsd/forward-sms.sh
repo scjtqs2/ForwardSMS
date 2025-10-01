@@ -17,18 +17,13 @@ mkdir -p "$INBOX_DIR"
 
 # 记录日志函数 - 同时输出到文件和控制台
 log() {
-    local message="$(date '+%Y-%m-%d %H:%M:%S') - $1"
-    echo "$message" >> "$LOG_FILE"
-#    echo "$message"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
 }
 
 # 内部调试日志函数 - 确保不干扰函数返回值
 log_debug_internal() {
-    local message="$1"
     if [ "${DEBUG_SMS:-false}" = "true" ]; then
-        local debug_message="$(date '+%Y-%m-%d %H:%M:%S') - $message"
-        echo "$debug_message" >> "$LOG_FILE"
-#        echo "$debug_message"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - $1">> "$LOG_FILE"
     fi
 }
 
