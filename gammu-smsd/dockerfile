@@ -3,6 +3,7 @@ FROM alpine:latest
 
 # 安装必要的软件包
 RUN apk add --no-cache \
+    gammu \
     gammu-smsd \
     sqlite \
     curl \
@@ -12,9 +13,7 @@ RUN apk add --no-cache \
     tzdata
 
 # 创建必要的目录和用户
-RUN adduser -D -s /bin/bash gammu && \
-    mkdir -p /var/lib/gammu /var/log/gammu /etc/gammu-smsd && \
-    chown gammu:gammu /var/lib/gammu /var/log/gammu /etc/gammu-smsd
+RUN mkdir -p /var/lib/gammu /var/log/gammu /etc/gammu-smsd
 
 # 复制配置文件和脚本
 COPY gammu-smsd/gammu-smsdrc.conf /etc/gammu-smsd/gammu-smsdrc
@@ -23,14 +22,11 @@ COPY gammu-smsd/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY gammu-smsd/sqlite.sql /etc/gammu-smsd/sqlite.sql
 
 # 设置权限
-RUN chmod +x /usr/local/bin/forward-sms.sh /usr/local/bin/docker-entrypoint.sh && \
-    chown gammu:gammu /usr/local/bin/forward-sms.sh
+RUN chmod +x /usr/local/bin/forward-sms.sh /usr/local/bin/docker-entrypoint.sh
 
 # 设置工作目录
 WORKDIR /var/lib/gammu
 
-# 切换到 gammu 用户
-USER gammu
 
 # 暴露必要的卷
 VOLUME ["/var/lib/gammu", "/etc/gammu-smsd"]

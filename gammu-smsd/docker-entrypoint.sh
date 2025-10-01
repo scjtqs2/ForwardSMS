@@ -28,14 +28,14 @@ fi
 mkdir -p /data/log /data/db /var/log/gammu
 
 # 设置目录权限
-chown -R gammu:gammu /data/log /data/db /var/log/gammu 2>/dev/null || true
+#chown -R gammu:gammu /data/log /data/db /var/log/gammu 2>/dev/null || true
 
 # 如果数据库文件不存在，初始化数据库
 if [ ! -f "/data/db/sms.db" ]; then
     echo "初始化 Gammu 数据库..."
     sqlite3 /data/db/sms.db < /etc/gammu-smsd/sqlite.sql
     # 设置数据库文件权限
-    chown gammu:gammu /data/db/sms.db 2>/dev/null || true
+#    chown gammu:gammu /data/db/sms.db 2>/dev/null || true
 fi
 
 # 检查转发脚本是否存在并具有执行权限

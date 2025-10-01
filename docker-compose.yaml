@@ -28,8 +28,9 @@ services:
       - API_TOKEN=your_shared_token_here
     volumes:
       - ./data:/data
-      - /dev/ttyUSB3:/dev/ttyUSB3
     privileged: true
+    devices:
+      - /dev/ttyUSB3
     restart: always
     ports:
       - 21234:21234
