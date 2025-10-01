@@ -30,13 +30,13 @@ mkdir -p /data/log /data/db /var/log/gammu /data/sms/inbox /data/sms/outbox /dat
 # 设置目录权限
 #chown -R gammu:gammu /data/log /data/db /var/log/gammu 2>/dev/null || true
 
-# 如果数据库文件不存在，初始化数据库
-if [ ! -f "/data/db/sms.db" ]; then
-    echo "初始化 Gammu 数据库..."
-    sqlite3 /data/db/sms.db < /etc/gammu-smsd/sqlite.sql
-    # 设置数据库文件权限
-#    chown gammu:gammu /data/db/sms.db 2>/dev/null || true
-fi
+## 如果数据库文件不存在，初始化数据库
+#if [ ! -f "/data/db/sms.db" ]; then
+#    echo "初始化 Gammu 数据库..."
+#    sqlite3 /data/db/sms.db < /etc/gammu-smsd/sqlite.sql
+#    # 设置数据库文件权限
+##    chown gammu:gammu /data/db/sms.db 2>/dev/null || true
+#fi
 
 # 检查转发脚本是否存在并具有执行权限
 if [ -f "/usr/local/bin/forward-sms.sh" ]; then
@@ -65,7 +65,8 @@ echo "=== Gammu SMSD 配置信息 ==="
 echo "USB 端口: ${USB_PORT:-未设置}"
 echo "转发 URL: ${FORWARD_URL:-未设置}"
 echo "AT 连接: ${ATCONNECTION:-未设置}"
-echo "数据库路径: /data/db/sms.db"
+echo "短信收件箱: /data/sms/inbox"
+echo "短信已转发: /data/sms/processed"
 echo "日志路径: /data/log/"
 echo "=========================="
 
