@@ -17,7 +17,7 @@ var (
 	viperconfig *viper.Viper
 	config      = map[string]interface{}{}
 	router      *gin.Engine
-	lastSMSID   int
+	lastSMSID   string
 )
 
 // SMSRequest 接收来自 gammu-smsd 的请求结构
