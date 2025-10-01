@@ -186,7 +186,15 @@ func testHandler(c *gin.Context) {
 		Number string `json:"number"`
 		Text   string `json:"text"`
 	}
-
+	smsReq := SMSRequest{
+		Number:    testReq.Number,
+		Text:      testReq.Text,
+		SMSID:     "test",
+		Source:    "test",
+		PhoneID:   "test",
+		Time:      "test",
+		Timestamp: "test",
+	}
 	if err := c.ShouldBindJSON(&testReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  "error",
@@ -196,7 +204,7 @@ func testHandler(c *gin.Context) {
 	}
 
 	// 使用测试数据处理短信
-	if err := processSMS(testReq.Number, time.Now().Format("2006-01-02 15:04:05"), testReq.Text); err != nil {
+	if err := processSMS(testReq.Number, time.Now().Format("2006-01-02 15:04:05"), testReq.Text, smsReq); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
 			"message": err.Error(),
@@ -239,7 +247,7 @@ func smsHandler(c *gin.Context) {
 	}).Info("收到短信推送")
 
 	// 处理短信转发
-	if err := processSMS(smsReq.Number, smsReq.Time, smsReq.Text); err != nil {
+	if err := processSMS(smsReq.Number, smsReq.Time, smsReq.Text, smsReq); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
 			"message": "处理短信失败: " + err.Error(),
@@ -262,7 +270,7 @@ func validateSecret(secret string) error {
 	return nil
 }
 
-func processSMS(sender, time, text string) error {
+func processSMS(sender, time, text string, smsReq SMSRequest) error {
 	log.WithFields(log.Fields{
 		"sender": sender,
 		"time":   time,
@@ -292,7 +300,7 @@ func processSMS(sender, time, text string) error {
 		// 根据规则类型匹配
 		if shouldSendNotification(ruleType, rule, text) {
 			log.Infof("触发规则: %s, 类型: %s", name, ruleType)
-			sendNotification(c, sender, time, text, rule)
+			sendNotification(c, sender, time, text, rule, smsReq)
 		}
 	}
 

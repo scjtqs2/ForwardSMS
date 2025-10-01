@@ -9,9 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func sendNotification(config map[string]interface{}, sender, time, text, rule string) {
+func sendNotification(config map[string]interface{}, sender, time, text, rule string, smsReq SMSRequest) {
 	message := fmt.Sprintf("触发规则: %s\n发送时间: %s\n发送人: %s\n短信内容: %s", rule, time, sender, text)
-
 	notifyType, ok := config["notify"].(string)
 	if !ok {
 		log.Error("通知类型配置错误")
@@ -25,15 +24,17 @@ func sendNotification(config map[string]interface{}, sender, time, text, rule st
 			sendWechat(url, sender, time, text, rule)
 		}
 	case "bark":
+		messageBark := fmt.Sprintf(`%s%s%s%s`, text, smsReq.PhoneID, smsReq.Time, smsReq.Source)
 		url, ok := config["url"].(string)
 		if ok {
-			sendBark(url, "短信通知", message)
+			sendBark(url, sender, messageBark)
 		}
 	case "gotify":
+		messageGotify := fmt.Sprintf(`%s\r\n%s\r\n%s\r\n%s`, text, smsReq.PhoneID, smsReq.Time, smsReq.Source)
 		url, ok1 := config["url"].(string)
 		token, ok2 := config["token"].(string)
 		if ok1 && ok2 {
-			sendGotify(url, token, "短信通知", message)
+			sendGotify(url, token, sender, messageGotify)
 		}
 	case "email":
 		smtpHost, ok1 := config["smtp_host"].(string)
@@ -91,7 +92,8 @@ func sendBark(url, title, body string) {
 }
 
 func sendGotify(url, token, title, message string) {
-	payload := fmt.Sprintf(`{"title":"%s","message":"%s","priority":5}`, title, message)
+	fmt.Println(url, token, title, message)
+	payload := fmt.Sprintf(`{"title":"%s","message":"%s","priority":9}`, title, message)
 	req, err := http.NewRequest("POST", url+"/message?token="+token, bytes.NewBuffer([]byte(payload)))
 	if err != nil {
 		log.Errorf("创建Gotify请求失败: %v", err)
