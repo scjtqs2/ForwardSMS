@@ -9,10 +9,10 @@ COPY ./forwardsms/ /go/
 RUN CGO_ENABLED=0 go build -ldflags "-s -w"
 
 FROM alpine
-RUN echo "*/1 * * * * /forwardsms >> /data/log/forwardsms.log" >> /etc/crontabs/root
+
 COPY  --from=build-env /go/forwardsms /forwardsms
 
 ENV HTTP_PORT="8080"
 ENV FORWARD_SECRET=""
 
-ENTRYPOINT ["/usr/sbin/crond", "-f"]
+ENTRYPOINT ["/forwardsms"]
