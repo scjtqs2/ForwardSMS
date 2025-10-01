@@ -22,17 +22,20 @@ all:
 bark:
     notify: bark
     type: all
+    rule: all
     url: "https://api.day.app/xxxx"
 
 gtify:
     notify: gotify
     type: all
+    rule: all
     url: "https://gotify.example.com"
     token: "your_app_token"
 
 email:
     notify: email
     type: all
+    rule: all
     smtp_host: "smtp.qq.com"
     smtp_port: "587"
     username: "xxx@qq.com"
