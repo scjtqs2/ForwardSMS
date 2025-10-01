@@ -15,13 +15,20 @@ mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p "$PROCESSED_DIR"
 mkdir -p "$INBOX_DIR"
 
+# 记录日志函数 - 同时输出到文件和控制台
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+    local message="$(date '+%Y-%m-%d %H:%M:%S') - $1"
+    echo "$message" >> "$LOG_FILE"
+#    echo "$message"
 }
 
+# 内部调试日志函数 - 确保不干扰函数返回值
 log_debug_internal() {
+    local message="$1"
     if [ "${DEBUG_SMS:-false}" = "true" ]; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S') - $1">> "$LOG_FILE"
+        local debug_message="$(date '+%Y-%m-%d %H:%M:%S') - $message"
+        echo "$debug_message" >> "$LOG_FILE"
+#        echo "$debug_message"
     fi
 }
 
@@ -55,28 +62,32 @@ FORWARD_SECRET="${FORWARD_SECRET:-}"
 FORWARD_TIMEOUT="${FORWARD_TIMEOUT:-30}"
 PHONE_ID="${PHONE_ID:-default-phone}"
 
-# 调试函数：查看文件实际内容
+# 安全的调试函数：查看文件实际内容（不产生标准输出）
 debug_file_content() {
     local file="$1"
-    log_debug_internal "🔍 调试文件内容: $file"
-    log_debug_internal "   文件大小: $(wc -c < "$file") 字节"
-    log_debug_internal "   文件行数: $(wc -l < "$file") 行"
-    log_debug_internal "   文件内容（原始）:"
-    local hexdump_output
-    hexdump_output=$(hexdump -C "$file" | head -10)
-    while IFS= read -r line; do
-        echo "   $line" >> "$LOG_FILE"
-        if [ "${DEBUG_SMS:-false}" = "true" ]; then
-            echo "   $line"
-        fi
-    done <<< "$hexdump_output"
-    log_debug_internal "   文件内容（文本）:"
-    while IFS= read -r line; do
-        echo "      $line" >> "$LOG_FILE"
-        if [ "${DEBUG_SMS:-false}" = "true" ]; then
-            echo "      $line"
-        fi
-    done < "$file"
+
+    # 使用子shell和重定向来确保不污染标准输出
+    (
+        log_debug_internal "🔍 调试文件内容: $file"
+        log_debug_internal "   文件大小: $(wc -c < "$file") 字节"
+        log_debug_internal "   文件行数: $(wc -l < "$file") 行"
+        log_debug_internal "   文件内容（原始）:"
+
+        # 将hexdump输出重定向到文件，然后通过log_debug_internal输出
+        local hexdump_output
+        hexdump_output=$(hexdump -C "$file" | head -10 2>/dev/null)
+        while IFS= read -r line; do
+            log_debug_internal "   $line"
+        done <<< "$hexdump_output"
+
+        log_debug_internal "   文件内容（文本）:"
+        # 将文件内容重定向到文件，然后通过log_debug_internal输出
+        local file_content
+        file_content=$(cat "$file" 2>/dev/null)
+        while IFS= read -r line; do
+            log_debug_internal "      $line"
+        done <<< "$file_content"
+    ) >/dev/null 2>&1  # 确保子shell不产生任何标准输出
 }
 
 # 调试函数：显示文件名解析详情
@@ -99,7 +110,7 @@ debug_filename_parse() {
     fi
 }
 
-# 解析短信文件内容 - 修复版本，确保不输出调试信息到返回值
+# 解析短信文件内容 - 完全安全的版本
 parse_sms_file() {
     local file="$1"
 
@@ -252,7 +263,7 @@ process_single_sms() {
     # 解析短信文件 - 使用临时文件避免命令替换问题
     local temp_output
     temp_output=$(mktemp)
-    parse_sms_file "$file" > "$temp_output"
+    parse_sms_file "$file" > "$temp_output" 2>/dev/null
     local parsed_data
     parsed_data=$(cat "$temp_output")
     rm -f "$temp_output"
