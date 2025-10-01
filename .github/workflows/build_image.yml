@@ -59,24 +59,24 @@ jobs:
           labels: ${{ steps.meta_forwardsms.outputs.labels }}
           platforms: linux/amd64,linux/arm64
 
-      # gammu-smsd metadata
-      - name: Extract metadata for gammu-smsd
-        id: meta_gammu
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gammu-smsd
-          tags: |
-            type=ref,event=branch
-            type=sha
-            type=ref,event=tag
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
-
-      - name: 编译 gammu-smsd 镜像
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: gammu-smsd/dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta_gammu.outputs.tags }}
-          labels: ${{ steps.meta_gammu.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
+#      # gammu-smsd metadata
+#      - name: Extract metadata for gammu-smsd
+#        id: meta_gammu
+#        uses: docker/metadata-action@v5
+#        with:
+#          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/gammu-smsd
+#          tags: |
+#            type=ref,event=branch
+#            type=sha
+#            type=ref,event=tag
+#            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
+#
+#      - name: 编译 gammu-smsd 镜像
+#        uses: docker/build-push-action@v5
+#        with:
+#          context: .
+#          file: gammu-smsd/dockerfile
+#          push: ${{ github.event_name != 'pull_request' }}
+#          tags: ${{ steps.meta_gammu.outputs.tags }}
+#          labels: ${{ steps.meta_gammu.outputs.labels }}
+#          platforms: linux/amd64,linux/arm64
