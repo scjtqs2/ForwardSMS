@@ -246,7 +246,7 @@ func sendQQPush(token, cqq, msg string) {
 	}
 	req.Header = header
 
-	client := &http.Client{Timeout: time.Second * 6}
+	client := &http.Client{Timeout: time.Second * 30}
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Errorf("发送QQPush通知失败: %v", err)
