@@ -19,13 +19,16 @@ mkdir -p "$INBOX_DIR"
 log() {
     local message="$(date '+%Y-%m-%d %H:%M:%S') - $1"
     echo "$message" >> "$LOG_FILE"
-    echo "$message"
+#    echo "$message"
 }
 
-# 内部日志函数 - 只用于调试，不污染函数返回值
-log_debug() {
+# 内部调试日志函数 - 确保不干扰函数返回值
+log_debug_internal() {
+    local message="$1"
     if [ "${DEBUG_SMS:-false}" = "true" ]; then
-        log "$1"
+        local debug_message="$(date '+%Y-%m-%d %H:%M:%S') - $message"
+        echo "$debug_message" >> "$LOG_FILE"
+#        echo "$debug_message"
     fi
 }
 
@@ -62,31 +65,31 @@ PHONE_ID="${PHONE_ID:-default-phone}"
 # 调试函数：查看文件实际内容
 debug_file_content() {
     local file="$1"
-    log_debug "🔍 调试文件内容: $file"
-    log_debug "   文件大小: $(wc -c < "$file") 字节"
-    log_debug "   文件行数: $(wc -l < "$file") 行"
-    log_debug "   文件内容（原始）:"
+    log_debug_internal "🔍 调试文件内容: $file"
+    log_debug_internal "   文件大小: $(wc -c < "$file") 字节"
+    log_debug_internal "   文件行数: $(wc -l < "$file") 行"
+    log_debug_internal "   文件内容（原始）:"
     local hexdump_output
     hexdump_output=$(hexdump -C "$file" | head -10)
-    echo "$hexdump_output" | while IFS= read -r line; do
+    while IFS= read -r line; do
         echo "   $line" >> "$LOG_FILE"
         if [ "${DEBUG_SMS:-false}" = "true" ]; then
             echo "   $line"
         fi
-    done
-    log_debug "   文件内容（文本）:"
-    cat "$file" | while IFS= read -r line; do
+    done <<< "$hexdump_output"
+    log_debug_internal "   文件内容（文本）:"
+    while IFS= read -r line; do
         echo "      $line" >> "$LOG_FILE"
         if [ "${DEBUG_SMS:-false}" = "true" ]; then
             echo "      $line"
         fi
-    done
+    done < "$file"
 }
 
 # 调试函数：显示文件名解析详情
 debug_filename_parse() {
     local filename="$1"
-    log_debug "🔍 解析文件名: $filename"
+    log_debug_internal "🔍 解析文件名: $filename"
 
     # 显示文件名各部分
     if [[ "$filename" =~ (IN[0-9]{8}_[0-9]{6}_[0-9]{2}_)([^_]+)(_.+\.txt) ]]; then
@@ -94,16 +97,16 @@ debug_filename_parse() {
         local potential_number="${BASH_REMATCH[2]}"
         local suffix="${BASH_REMATCH[3]}"
 
-        log_debug "   文件名结构:"
-        log_debug "   前缀: $prefix"
-        log_debug "   可能号码: $potential_number"
-        log_debug "   后缀: $suffix"
+        log_debug_internal "   文件名结构:"
+        log_debug_internal "   前缀: $prefix"
+        log_debug_internal "   可能号码: $potential_number"
+        log_debug_internal "   后缀: $suffix"
     else
-        log_debug "   ⚠️ 无法解析文件名结构"
+        log_debug_internal "   ⚠️ 无法解析文件名结构"
     fi
 }
 
-# 解析短信文件内容
+# 解析短信文件内容 - 修复版本，确保不输出调试信息到返回值
 parse_sms_file() {
     local file="$1"
 
@@ -121,22 +124,22 @@ parse_sms_file() {
         local date_part="${BASH_REMATCH[1]}"
         local time_part="${BASH_REMATCH[2]}"
         time="${date_part:0:4}-${date_part:4:2}-${date_part:6:2} ${time_part:0:2}:${time_part:2:2}:${time_part:4:2}"
-        log_debug "从文件名解析时间: $time"
+        log_debug_internal "从文件名解析时间: $time"
     else
-        log_debug "⚠️ 无法从文件名解析时间"
+        log_debug_internal "⚠️ 无法从文件名解析时间"
     fi
 
     # 从文件名解析号码
     if [[ "$sms_id" =~ _([+0-9]{11,})_ ]]; then
         number="${BASH_REMATCH[1]}"
-        log_debug "从文件名解析到号码: $number"
+        log_debug_internal "从文件名解析到号码: $number"
     else
         # 如果没匹配到，尝试其他模式
         if [[ "$sms_id" =~ _([0-9]{5,})_ ]]; then
             number="${BASH_REMATCH[1]}"
-            log_debug "从文件名解析到备用号码: $number"
+            log_debug_internal "从文件名解析到备用号码: $number"
         else
-            log_debug "⚠️ 无法从文件名解析号码"
+            log_debug_internal "⚠️ 无法从文件名解析号码"
         fi
     fi
 
@@ -152,23 +155,23 @@ parse_sms_file() {
 
         # 如果从文件名中没解析出正确的号码，尝试其他方法
         if [ -z "$number" ] || [ ${#number} -lt 11 ]; then
-            log_debug "⚠️ 从文件名解析的号码可能不正确: '$number'，尝试重新解析"
+            log_debug_internal "⚠️ 从文件名解析的号码可能不正确: '$number'，尝试重新解析"
             # 重新从文件名解析，使用更精确的正则
             if [[ "$sms_id" =~ _(\+[0-9]{11,})_ ]]; then
                 number="${BASH_REMATCH[1]}"
-                log_debug "重新解析到号码: $number"
+                log_debug_internal "重新解析到号码: $number"
             elif [[ "$sms_id" =~ _([0-9]{11,})_ ]]; then
                 number="${BASH_REMATCH[1]}"
-                log_debug "重新解析到号码: $number"
+                log_debug_internal "重新解析到号码: $number"
             else
-                log_debug "❌ 无法重新解析到有效号码"
+                log_debug_internal "❌ 无法重新解析到有效号码"
             fi
         fi
 
         # 如果没有明确的时间，使用文件修改时间
         if [ -z "$time" ]; then
             time=$(date -r "$file" "+%Y-%m-%d %H:%M:%S")
-            log_debug "使用文件修改时间: $time"
+            log_debug_internal "使用文件修改时间: $time"
         fi
 
         # 返回解析结果（只返回数据，不包含日志）
@@ -253,9 +256,13 @@ process_single_sms() {
         debug_filename_parse "$(basename "$file")"
     fi
 
-    # 解析短信文件
+    # 解析短信文件 - 使用临时文件避免命令替换问题
+    local temp_output
+    temp_output=$(mktemp)
+    parse_sms_file "$file" > "$temp_output"
     local parsed_data
-    parsed_data=$(parse_sms_file "$file")
+    parsed_data=$(cat "$temp_output")
+    rm -f "$temp_output"
 
     if [ -z "$parsed_data" ]; then
         log "❌ 无法解析短信文件: $file"
