@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/smtp"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -31,7 +32,6 @@ func sendNotification(config map[string]interface{}, sender, time, text, rule st
 			sendWechat(url, sender, time, text, rule)
 		}
 	case "bark":
-		// messagePhone = fmt.Sprintf("%s%s%s%s", text, smsReq.PhoneID, smsReq.Time, smsReq.Source)
 		url, ok := config["url"].(string)
 		if ok {
 			sendBark(url, sender, messagePhone)
@@ -57,6 +57,23 @@ func sendNotification(config map[string]interface{}, sender, time, text, rule st
 		token, ok2 := config["token"].(string)
 		if ok1 && ok2 {
 			sendQQPush(token, qq, fmt.Sprintf("短信通知\n%s", message))
+		}
+	case "feishu":
+		url, ok := config["url"].(string)
+		if ok {
+			sendFeishu(url, "短信通知", message)
+		}
+	case "dingtalk":
+		url, ok := config["url"].(string)
+		if ok {
+			sendDingtalk(url, "短信通知", message)
+		}
+	case "telegram":
+		botToken, ok1 := config["bot_token"].(string)
+		chatID, ok2 := config["chat_id"].(string)
+		proxyURL, _ := config["proxy"].(string) // 代理配置，可选
+		if ok1 && ok2 {
+			sendTelegram(botToken, chatID, message, proxyURL)
 		}
 	default:
 		log.Warnf("未知的通知类型: %s", notifyType)
@@ -195,6 +212,173 @@ func sendEmail(smtpHost, smtpPort, username, password, from, to, subject, body s
 	log.Info("邮件发送成功")
 }
 
+// FeishuRequest 飞书机器人请求结构
+type FeishuRequest struct {
+	MsgType string `json:"msg_type"`
+	Content struct {
+		Text string `json:"text"`
+	} `json:"content"`
+}
+
+func sendFeishu(webhookURL, title, message string) {
+	// 构建飞书消息
+	feishuMsg := FeishuRequest{
+		MsgType: "text",
+		Content: struct {
+			Text string `json:"text"`
+		}{
+			Text: fmt.Sprintf("%s\n%s", title, message),
+		},
+	}
+
+	payload, err := json.Marshal(feishuMsg)
+	if err != nil {
+		log.Errorf("序列化飞书请求失败: %v", err)
+		return
+	}
+
+	req, err := http.NewRequest("POST", webhookURL, bytes.NewBuffer(payload))
+	if err != nil {
+		log.Errorf("创建飞书请求失败: %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf("发送飞书通知失败: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode == http.StatusOK {
+		log.Info("飞书通知发送成功")
+	} else {
+		log.Errorf("飞书通知发送失败，状态码: %d, 响应: %s", resp.StatusCode, string(body))
+	}
+}
+
+// DingtalkRequest 钉钉机器人请求结构
+type DingtalkRequest struct {
+	MsgType string `json:"msgtype"`
+	Text    struct {
+		Content string `json:"content"`
+	} `json:"text"`
+	At struct {
+		IsAtAll bool `json:"isAtAll"`
+	} `json:"at"`
+}
+
+func sendDingtalk(webhookURL, title, message string) {
+	// 构建钉钉消息
+	dingtalkMsg := DingtalkRequest{
+		MsgType: "text",
+		Text: struct {
+			Content string `json:"content"`
+		}{
+			Content: fmt.Sprintf("%s\n%s", title, message),
+		},
+		At: struct {
+			IsAtAll bool `json:"isAtAll"`
+		}{
+			IsAtAll: false,
+		},
+	}
+
+	payload, err := json.Marshal(dingtalkMsg)
+	if err != nil {
+		log.Errorf("序列化钉钉请求失败: %v", err)
+		return
+	}
+
+	req, err := http.NewRequest("POST", webhookURL, bytes.NewBuffer(payload))
+	if err != nil {
+		log.Errorf("创建钉钉请求失败: %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf("发送钉钉通知失败: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode == http.StatusOK {
+		log.Info("钉钉通知发送成功")
+	} else {
+		log.Errorf("钉钉通知发送失败，状态码: %d, 响应: %s", resp.StatusCode, string(body))
+	}
+}
+
+// TelegramRequest Telegram 发送消息请求结构
+type TelegramRequest struct {
+	ChatID string `json:"chat_id"`
+	Text   string `json:"text"`
+}
+
+// sendTelegram 发送Telegram消息，支持代理
+func sendTelegram(botToken, chatID, message, proxyURL string) {
+	// Telegram Bot API URL
+	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
+
+	// 构建消息
+	tgMsg := TelegramRequest{
+		ChatID: chatID,
+		Text:   message,
+	}
+
+	payload, err := json.Marshal(tgMsg)
+	if err != nil {
+		log.Errorf("序列化Telegram请求失败: %v", err)
+		return
+	}
+
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(payload))
+	if err != nil {
+		log.Errorf("创建Telegram请求失败: %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// 创建HTTP客户端，支持代理
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	// 如果配置了代理，设置代理传输
+	if proxyURL != "" {
+		proxy, err := url.Parse(proxyURL)
+		if err != nil {
+			log.Errorf("解析代理URL失败: %v", err)
+			return
+		}
+
+		transport := &http.Transport{
+			Proxy: http.ProxyURL(proxy),
+		}
+		client.Transport = transport
+		log.Infof("使用代理发送Telegram消息: %s", proxyURL)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf("发送Telegram通知失败: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode == http.StatusOK {
+		log.Info("Telegram通知发送成功")
+	} else {
+		log.Errorf("Telegram通知发送失败，状态码: %d, 响应: %s", resp.StatusCode, string(body))
+	}
+}
+
 // extractVerificationCode 从内容中提取验证码
 func extractVerificationCode(content string) string {
 	// 修复后的正则表达式 - 移除不支持的语法
@@ -232,7 +416,6 @@ func sendQQPush(token, cqq, msg string) {
 
 	posturl := fmt.Sprintf("https://wx.scjtqs.com/qq/push/pushMsg?token=%s", token)
 	header := make(http.Header)
-	// header.Set("Users-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:32.0) Gecko/20100101 Firefox/32.0")
 	header.Set("content-type", "application/json")
 
 	postdata, err := json.Marshal(PostData{

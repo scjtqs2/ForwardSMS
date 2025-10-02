@@ -42,3 +42,23 @@ email:
     password: "授权码"
     from: "xxx@qq.com"
     to: "yyy@qq.com"
+
+feishu:
+  notify: feishu
+  type: all
+  rule: all
+  url: "https://open.feishu.cn/open-apis/bot/v2/hook/xxx"
+
+dingding:
+  notify: dingtalk
+  type: all
+  rule: all
+  url: "https://oapi.dingtalk.com/robot/send?access_token=xxx"
+
+telegram:
+  notify: telegram
+  type: all
+  rule: all
+  bot_token: "123456789:AAFxxxxxxxx"
+  chat_id: "-1001234567890"
+  proxy: "http://proxy.example.com:8080" # 或者 "socks5://127.0.0.1:1080" 或者留空
