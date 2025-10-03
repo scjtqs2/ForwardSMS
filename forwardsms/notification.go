@@ -15,10 +15,19 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func sendNotification(config map[string]interface{}, sender, time, text, rule string, smsReq SMSRequest) {
+func sendNotification(config map[string]interface{}, sender string, time string, text string, rule string, smsReq SMSRequest) {
 	message := fmt.Sprintf("触发规则: %s\n发送时间: %s\n发送人: %s \nphoneID: %s\n短信内容: %s\nSource: %s", rule, time, sender, smsReq.PhoneID, text, smsReq.Source)
 	messagePhone := fmt.Sprintf("%s\n%s\n%s\n%s", text, smsReq.PhoneID, smsReq.Time, smsReq.Source)
+	sendForward(config, "短信通知", sender, message, messagePhone)
+}
 
+func sendCallNotification(config map[string]interface{}, rule string, callReq CallRequest) {
+	message := fmt.Sprintf("来电通知\n发送时间: %s\n发送人: %s \n%s\nphoneID: %s\nName: %s\nSource: %s", callReq.Time, callReq.Number, callReq.Type, callReq.PhoneID, callReq.Name, callReq.Source)
+	messagePhone := fmt.Sprintf("%s\n\n%s\n%s\n%s\n%s\n%s", callReq.Number, callReq.Type, callReq.PhoneID, callReq.Time, callReq.Name, callReq.Source)
+	sendForward(config, "来电通知", callReq.Number, message, messagePhone)
+}
+
+func sendForward(config map[string]interface{}, title string, sender string, message string, messagePhone string) {
 	notifyType, ok := config["notify"].(string)
 	if !ok {
 		log.Error("通知类型配置错误")
@@ -29,7 +38,7 @@ func sendNotification(config map[string]interface{}, sender, time, text, rule st
 	case "wechat":
 		url, ok := config["url"].(string)
 		if ok {
-			sendWechat(url, sender, time, text, rule)
+			sendWechat(url, title, message)
 		}
 	case "bark":
 		url, ok := config["url"].(string)
@@ -50,23 +59,23 @@ func sendNotification(config map[string]interface{}, sender, time, text, rule st
 		from, ok5 := config["from"].(string)
 		to, ok6 := config["to"].(string)
 		if ok1 && ok2 && ok3 && ok4 && ok5 && ok6 {
-			sendEmail(smtpHost, smtpPort, username, password, from, to, "短信通知", message)
+			sendEmail(smtpHost, smtpPort, username, password, from, to, title, message)
 		}
 	case "qq":
 		qq, ok1 := config["qq"].(string)
 		token, ok2 := config["token"].(string)
 		if ok1 && ok2 {
-			sendQQPush(token, qq, fmt.Sprintf("短信通知\n%s", message))
+			sendQQPush(token, qq, fmt.Sprintf("%s\n%s", title, message))
 		}
 	case "feishu":
 		url, ok := config["url"].(string)
 		if ok {
-			sendFeishu(url, "短信通知", message)
+			sendFeishu(url, title, message)
 		}
 	case "dingtalk":
 		url, ok := config["url"].(string)
 		if ok {
-			sendDingtalk(url, "短信通知", message)
+			sendDingtalk(url, title, message)
 		}
 	case "telegram":
 		botToken, ok1 := config["bot_token"].(string)
@@ -80,10 +89,18 @@ func sendNotification(config map[string]interface{}, sender, time, text, rule st
 	}
 }
 
-func sendWechat(url string, SenderNumber string, ReceivingDateTime string, TextDecoded string, rule string) {
-	smssend := fmt.Sprintf(`{"msgtype":"text","text":{"content":"触发规则: %s \n发送时间: %s \n发送人：%s \n短信内容：%s"}}`, rule, ReceivingDateTime, SenderNumber, TextDecoded)
-	var jsonStr = []byte(smssend)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+func sendWechat(url string, title, message string) {
+	type Content struct {
+		Content string `json:"content"`
+	}
+	type body struct {
+		Msgtype string  `json:"msgtype"`
+		Text    Content `json:"text"`
+	}
+	messend := body{Msgtype: "text", Text: Content{fmt.Sprintf("%s\n%s", title, message)}}
+	// smssend := fmt.Sprintf(`{"msgtype":"text","text":{"content":"触发规则: %s \n发送时间: %s \n发送人：%s \n短信内容：%s"}}`, rule, ReceivingDateTime, SenderNumber, TextDecoded)
+	jsonBytes, _ := json.Marshal(messend)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBytes))
 	if err != nil {
 		log.Errorf("创建微信请求失败: %v", err)
 		return

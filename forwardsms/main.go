@@ -114,8 +114,9 @@ func setupRoutes() {
 	{
 		// 短信接收端点
 		v1.POST("/sms", smsHandler)
-		v1.POST("/sms/receive", smsHandler) // 兼容性端点
-
+		v1.POST("/sms/receive", smsHandler)   // 短信接受
+		v1.POST("/call", callHandler)         // 来电接受
+		v1.POST("/call/receive", callHandler) // 来电接受
 		// 管理端点
 		v1.GET("/health", healthHandler)
 		v1.GET("/status", statusHandler)
@@ -262,6 +263,63 @@ func smsHandler(c *gin.Context) {
 	})
 }
 
+type CallRequest struct {
+	Secret    string `json:"secret"`
+	Number    string `json:"number"`
+	Name      string `json:"name"`
+	Time      string `json:"time"`
+	Type      string `json:"type"` // "incoming", "outgoing", "missed", "ended", "unknown"
+	Duration  int    `json:"duration"`
+	Source    string `json:"source"`
+	PhoneID   string `json:"phone_id"`
+	Timestamp string `json:"timestamp"`
+}
+
+// callHandler 处理来自 gammu-smsd 的来电推送
+func callHandler(c *gin.Context) {
+	var callReq CallRequest
+	if err := c.ShouldBindJSON(&callReq); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "无效的 JSON 数据: " + err.Error(),
+		})
+		return
+	}
+
+	// 验证密钥（可选）
+	if err := validateSecret(callReq.Secret); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  "error",
+			"message": "认证失败",
+		})
+		return
+	}
+	log.WithFields(log.Fields{
+		"number":   callReq.Number,
+		"name":     callReq.Name,
+		"time":     callReq.Time,
+		"source":   callReq.Source,
+		"type":     callReq.Type,
+		"phone_id": callReq.PhoneID,
+		"duration": callReq.Duration,
+	}).Info("收到call推送")
+
+	// 处理短信转发
+	if err := processCALL(callReq); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "处理call失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 返回成功响应
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "call接收并处理成功",
+	})
+}
+
 func validateSecret(secret string) error {
 	expectedSecret := os.Getenv("FORWARD_SECRET")
 	if expectedSecret != "" && secret != expectedSecret {
@@ -324,4 +382,39 @@ func shouldSendNotification(ruleType, rule, text string) bool {
 		log.Warnf("未知的规则类型: %s", ruleType)
 		return false
 	}
+}
+
+func processCALL(callReq CallRequest) error {
+	log.WithFields(log.Fields{
+		"number":   callReq.Number,
+		"name":     callReq.Name,
+		"time":     callReq.Time,
+		"type":     callReq.Type,
+		"duration": callReq.Duration,
+	}).Info("开始处理call")
+
+	// 遍历所有配置的转发规则
+	for name, cfg := range config {
+		c, ok := cfg.(map[string]interface{})
+		if !ok {
+			log.Warnf("call配置格式错误: %s", name)
+			continue
+		}
+
+		rule, ok := c["rule"].(string)
+		if !ok && rule != "all" {
+			log.Warnf("call规则配置错误: %s", name)
+			continue
+		}
+
+		ruleType, ok := c["type"].(string)
+		if !ok && ruleType != "all" {
+			log.Warnf("call类型配置错误: %s", name)
+			continue
+		}
+		// 根据规则类型匹配
+		sendCallNotification(c, rule, callReq)
+	}
+
+	return nil
 }
