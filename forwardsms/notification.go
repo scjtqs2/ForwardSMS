@@ -23,11 +23,11 @@ func sendNotification(config map[string]interface{}, sender string, time string,
 
 func sendCallNotification(config map[string]interface{}, rule string, callReq CallRequest) {
 	message := fmt.Sprintf("发送时间: %s\n发送人: %s \n%s\nphoneID: %s\nName: %s\nSource: %s", callReq.Time, callReq.Number, callReq.Type, callReq.PhoneID, callReq.Name, callReq.Source)
-	messagePhone := fmt.Sprintf("%s\n\n%s\n%s\n%s\n%s\n%s", callReq.Number, callReq.Type, callReq.PhoneID, callReq.Time, callReq.Name, callReq.Source)
-	sendForward(config, "来电通知", callReq.Number, message, messagePhone)
+	messagePhone := fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s", callReq.Number, callReq.Type, callReq.PhoneID, callReq.Time, callReq.Name, callReq.Source)
+	sendForward(config, "来电通知", "来电通知", message, messagePhone)
 }
 
-func sendForward(config map[string]interface{}, title string, sender string, message string, messagePhone string) {
+func sendForward(config map[string]interface{}, title string, mobileTitle string, message string, messagePhone string) {
 	notifyType, ok := config["notify"].(string)
 	if !ok {
 		log.Error("通知类型配置错误")
@@ -43,13 +43,13 @@ func sendForward(config map[string]interface{}, title string, sender string, mes
 	case "bark":
 		url, ok := config["url"].(string)
 		if ok {
-			sendBark(url, sender, messagePhone)
+			sendBark(url, mobileTitle, messagePhone)
 		}
 	case "gotify":
 		url, ok1 := config["url"].(string)
 		token, ok2 := config["token"].(string)
 		if ok1 && ok2 {
-			sendGotify(url, token, sender, messagePhone)
+			sendGotify(url, token, mobileTitle, messagePhone)
 		}
 	case "email":
 		smtpHost, ok1 := config["smtp_host"].(string)
