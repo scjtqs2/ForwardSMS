@@ -22,7 +22,7 @@ func sendNotification(config map[string]interface{}, sender string, time string,
 }
 
 func sendCallNotification(config map[string]interface{}, rule string, callReq CallRequest) {
-	message := fmt.Sprintf("来电通知\n发送时间: %s\n发送人: %s \n%s\nphoneID: %s\nName: %s\nSource: %s", callReq.Time, callReq.Number, callReq.Type, callReq.PhoneID, callReq.Name, callReq.Source)
+	message := fmt.Sprintf("发送时间: %s\n发送人: %s \n%s\nphoneID: %s\nName: %s\nSource: %s", callReq.Time, callReq.Number, callReq.Type, callReq.PhoneID, callReq.Name, callReq.Source)
 	messagePhone := fmt.Sprintf("%s\n\n%s\n%s\n%s\n%s\n%s", callReq.Number, callReq.Type, callReq.PhoneID, callReq.Time, callReq.Name, callReq.Source)
 	sendForward(config, "来电通知", callReq.Number, message, messagePhone)
 }
